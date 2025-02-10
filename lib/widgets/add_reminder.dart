@@ -5,8 +5,10 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:mm_project/model/reminder_model.dart';
 import 'package:mm_project/utils/app_colors.dart';
+import 'package:mm_project/widgets/round_text_field.dart';
 
 addReminder(BuildContext context, String uid){
+  final TextEditingController _medNameController = TextEditingController();
   TimeOfDay time = TimeOfDay.now();
   add(String uid, TimeOfDay time){
     try{
@@ -15,7 +17,7 @@ addReminder(BuildContext context, String uid){
         d.year, d.month, d.day, time.hour, time.minute
       );
       Timestamp timestamp = Timestamp.fromDate(dateTime);
-      ReminderModel reminderModel = ReminderModel();
+      ReminderModel reminderModel = ReminderModel(medicationName: _medNameController.text);
       reminderModel.timestamp = timestamp;
       reminderModel.onOff = false;
       FirebaseFirestore.instance.collection('users').doc(uid).collection('reminder').doc().set(reminderModel.toMap());
@@ -38,6 +40,12 @@ addReminder(BuildContext context, String uid){
           content: SingleChildScrollView(
             child: Column(
               children: [
+                Text("Medication  Name"),
+                SizedBox(height: 10),
+                RoundTextField(
+                  textEditingController: _medNameController,
+                  hintText: "Enter the Medication Name", icon: "assets/icons/pill.png", textinputType: TextInputType.text),
+                SizedBox(height: 10),
                 Text("Select a Time for Reminder"),
                 SizedBox(height: 20),
                 MaterialButton(onPressed: ()async{

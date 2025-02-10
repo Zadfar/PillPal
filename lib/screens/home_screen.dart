@@ -106,6 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
               return ListView.builder(
                 itemCount: data?.docs.length,
                 itemBuilder: (context, index) {
+                  String medName = data?.docs[index].get('name');
                   Timestamp t = data?.docs[index].get('time');
                   DateTime date = DateTime.fromMicrosecondsSinceEpoch(t.microsecondsSinceEpoch);
                   String formattedTime = DateFormat.jm().format(date);
@@ -124,12 +125,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: ListTile(
                             title: Text(formattedTime,
                             style: TextStyle(fontSize: 30),),
-                            subtitle: Text("Everyday"),
+                            subtitle: Text(medName),
                             trailing: Container(
                               width: 110,
                               child: Row(
                                 children: [
-                                  Switcher(on, user!.uid, data.docs[index].id, data.docs[index].get('time')),
+                                  Switcher(on, user!.uid, data.docs[index].id, data.docs[index].get('time'), data.docs[index].get('name')),
                                   IconButton(onPressed: () {
                                     deleteReminder(context, data.docs[index].id, user!.uid);
                                   }, 

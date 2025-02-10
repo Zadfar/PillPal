@@ -8,8 +8,9 @@ class Switcher extends StatefulWidget {
   String uid;
   Timestamp timestamp;
   String id;
+  String medName;
 
-  Switcher(this.onOff, this.uid, this.id, this.timestamp);
+  Switcher(this.onOff, this.uid, this.id, this.timestamp, this.medName);
 
   @override
   State<Switcher> createState() => _SwitcherState();
@@ -20,7 +21,7 @@ class _SwitcherState extends State<Switcher> {
   Widget build(BuildContext context) {
     return Switch(
       onChanged: (bool value) {
-        ReminderModel reminderModel = ReminderModel();
+        ReminderModel reminderModel = ReminderModel(medicationName: widget.medName);
         reminderModel.onOff = value;
         reminderModel.timestamp = widget.timestamp;
         FirebaseFirestore.instance.collection('users').doc(widget.uid).collection("reminder").doc(widget.id).update(reminderModel.toMap());
