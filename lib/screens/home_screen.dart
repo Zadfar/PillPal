@@ -194,7 +194,6 @@ class _HomeScreenState extends State<HomeScreen> {
               .collection("reminder")
               .snapshots(),
           builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
-            // Handle loading state
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
                 child: CircularProgressIndicator(
@@ -202,29 +201,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               );
             }
-
-            // Check for errors
             if (snapshot.hasError) {
-              return Center(
-                child: Text("Error: ${snapshot.error}"),
-              );
+              return Center(child: Text("Error: ${snapshot.error}"));
             }
-
-            // Handle null data or empty collection
             if (!snapshot.hasData || snapshot.data == null) {
-              return const Center(
-                child: Text("No data available"),
-              );
+              return const Center(child: Text("No data available"));
             }
-
-            // Now safe to check if docs are empty
             if (snapshot.data!.docs.isEmpty) {
-              return const Center(
-                child: Text("Nothing to Show"),
-              );
+              return const Center(child: Text("Nothing to Show"));
             }
 
-            // Data is available and non-empty
             final data = snapshot.data!;
             return ListView.builder(
               itemCount: data.docs.length,
@@ -234,14 +220,28 @@ class _HomeScreenState extends State<HomeScreen> {
                 DateTime date = DateTime.fromMicrosecondsSinceEpoch(t.microsecondsSinceEpoch);
                 String formattedTime = DateFormat.jm().format(date);
                 bool on = data.docs[index].get('onOff');
+                String frequency = data.docs[index].get('frequency') ?? 'Daily';
+                int intervalHours = data.docs[index].get('intervalHours') ?? 1;
+
                 if (on) {
-                  NotificationLogic.showNotifications(
-                    dateTime: date,
-                    id: index,
-                    title: "PillPal",
-                    body: "Don't forget to take your medication",
-                  );
+                  DateTime nextTime = date;
+                  while (nextTime.isBefore(DateTime.now().add(const Duration(days: 7)))) {
+                    NotificationLogic.showNotifications(
+                      dateTime: nextTime,
+                      id: "${data.docs[index].id.hashCode}_${nextTime.millisecondsSinceEpoch}".hashCode,
+                      title: "PillPal",
+                      body: "Time to take $medName",
+                    );
+                    if (frequency == 'Daily') {
+                      nextTime = nextTime.add(Duration(hours: intervalHours));
+                    } else if (frequency == 'Weekly') {
+                      nextTime = nextTime.add(Duration(days: 7, hours: intervalHours));
+                    }
+                  }
+                } else {
+                  // Optionally cancel notifications if off (requires storing notification IDs)
                 }
+
                 return SingleChildScrollView(
                   child: Column(
                     children: [
@@ -249,26 +249,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.all(8),
                         child: Card(
                           child: ListTile(
-                            title: Text(
-                              formattedTime,
-                              style: const TextStyle(fontSize: 30),
-                            ),
-                            subtitle: Text(medName),
+                            title: Text(formattedTime, style: const TextStyle(fontSize: 30)),
+                            subtitle: Text("$medName ($frequency, every $intervalHours hr${intervalHours > 1 ? 's' : ''})"),
                             trailing: SizedBox(
                               width: 110,
                               child: Row(
                                 children: [
-                                  Switcher(
-                                    on,
-                                    user!.uid,
-                                    data.docs[index].id,
-                                    data.docs[index].get('time'),
-                                    data.docs[index].get('name'),
-                                  ),
+                                  Switcher(on, user!.uid, data.docs[index].id, t, medName),
                                   IconButton(
-                                    onPressed: () {
-                                      deleteReminder(context, data.docs[index].id, user!.uid);
-                                    },
+                                    onPressed: () => deleteReminder(context, data.docs[index].id, user!.uid),
                                     icon: const FaIcon(FontAwesomeIcons.circleXmark),
                                   ),
                                 ],
