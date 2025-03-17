@@ -18,14 +18,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final CollectionReference _users = FirebaseFirestore.instance.collection('users');
 
   final TextEditingController _ageController = TextEditingController();
-  final TextEditingController _genderController = TextEditingController();
+  String? _selectedGender;
   final TextEditingController _locationController = TextEditingController();
-  final TextEditingController _bloodTypeController = TextEditingController();
+  String? _selectedBloodType;
   final TextEditingController _allergiesController = TextEditingController();
   final TextEditingController _medicationsController = TextEditingController();
   final TextEditingController _emergencyContactController = TextEditingController();
 
   final _formKey = GlobalKey<FormState>();
+
+  final List<String> _genderOptions = ['Male', 'Female', 'Other'];
+  final List<String> _bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
   Future<void> _saveProfile() async {
     if (_formKey.currentState!.validate()) {
@@ -34,13 +37,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         if (user != null) {
           await _users.doc(user.uid).update({
             'age': _ageController.text,
-            'gender': _genderController.text,
+            'gender': _selectedGender,
             'location': _locationController.text,
-            'bloodType': _bloodTypeController.text,
+            'bloodType': _selectedBloodType,
             'allergies': _allergiesController.text,
             'medications': _medicationsController.text,
             'emergencyContact': _emergencyContactController.text,
-            'memberSince': DateTime.now().year.toString(), // Example value
+            'memberSince': DateTime.now().year.toString(),
           });
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -97,13 +100,44 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   },
                 ),
                 const SizedBox(height: 15),
-                RoundTextField(
-                  textEditingController: _genderController,
-                  hintText: "Gender",
-                  icon: "assets/icons/gender.png",
-                  textinputType: TextInputType.text,
+                // Gender Dropdown
+                DropdownButtonFormField<String>(
+                  value: _selectedGender,
+                  hint: const Text("Select Gender"),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: AppColors.lightGrayColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
+                    prefixIcon: Container(
+                      alignment: Alignment.center,
+                      width: 20,
+                      height: 20,
+                      child: Image.asset(
+                        "assets/icons/gender.png",
+                        height: 20,
+                        width: 20,
+                        fit: BoxFit.contain,
+                        color: AppColors.grayColor,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  items: _genderOptions
+                      .map((String gender) => DropdownMenuItem<String>(
+                            value: gender,
+                            child: Text(gender),
+                          ))
+                      .toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _selectedGender = newValue;
+                    });
+                  },
                   validator: (value) {
-                    if (value == null || value.isEmpty) return "Please enter your gender";
+                    if (value == null) return "Please select your gender";
                     return null;
                   },
                 ),
@@ -119,13 +153,44 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   },
                 ),
                 const SizedBox(height: 15),
-                RoundTextField(
-                  textEditingController: _bloodTypeController,
-                  hintText: "Blood Type",
-                  icon: "assets/icons/blood.png",
-                  textinputType: TextInputType.text,
+                // Blood Type Dropdown
+                DropdownButtonFormField<String>(
+                  value: _selectedBloodType,
+                  hint: const Text("Select Blood Type"),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: AppColors.lightGrayColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
+                    prefixIcon: Container(
+                      alignment: Alignment.center,
+                      width: 20,
+                      height: 20,
+                      child: Image.asset(
+                        "assets/icons/blood.png",
+                        height: 20,
+                        width: 20,
+                        fit: BoxFit.contain,
+                        color: AppColors.grayColor,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  items: _bloodTypes
+                      .map((String bloodType) => DropdownMenuItem<String>(
+                            value: bloodType,
+                            child: Text(bloodType),
+                          ))
+                      .toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _selectedBloodType = newValue;
+                    });
+                  },
                   validator: (value) {
-                    if (value == null || value.isEmpty) return "Please enter your blood type";
+                    if (value == null) return "Please select your blood type";
                     return null;
                   },
                 ),

@@ -39,7 +39,8 @@ class ProfileModel {
       'memberSince': memberSince,
     };
   }
-factory ProfileModel.fromJson(Map<String, dynamic> json) {
+
+  factory ProfileModel.fromJson(Map<String, dynamic> json) {
     return ProfileModel(
       fullName: json['fullName'] ?? 'Jane Doe',
       age: json['age'] ?? '32',
@@ -52,22 +53,21 @@ factory ProfileModel.fromJson(Map<String, dynamic> json) {
       memberSince: json['memberSince'] ?? '2023',
     );
   }
-  
-  
-factory ProfileModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
-  final data = doc.data() ?? {};
-  return ProfileModel(
-    fullName: '${data['firstName'] ?? 'Jane'} ${data['lastName'] ?? 'Doe'}',
-    age: data['age'] ?? '32',
-    gender: data['gender'] ?? 'Female',
-    location: data['location'] ?? 'New York, USA',
-    bloodType: data['bloodType'] ?? 'A+',
-    allergies: data['allergies'] ?? 'Peanuts, Penicillin',
-    medications: data['medications'] ?? 'None',
-    emergencyContact: data['emergencyContact'] ?? 'John Doe (555-123-4567)',
-    memberSince: data['memberSince'] ?? '2023',
-  );
-}
+
+  factory ProfileModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? {};
+    return ProfileModel(
+      fullName: '${data['firstName'] ?? 'Jane'} ${data['lastName'] ?? 'Doe'}',
+      age: data['age'] ?? '32',
+      gender: data['gender'] ?? 'Female',
+      location: data['location'] ?? 'New York, USA',
+      bloodType: data['bloodType'] ?? 'A+',
+      allergies: data['allergies'] ?? 'Peanuts, Penicillin',
+      medications: data['medications'] ?? 'None',
+      emergencyContact: data['emergencyContact'] ?? 'John Doe (555-123-4567)',
+      memberSince: data['memberSince'] ?? '2023',
+    );
+  }
 }
 
 class ProfilePage extends StatefulWidget {
@@ -82,13 +82,15 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isLoading = true;
   late ProfileModel _profile;
   final _formKey = GlobalKey<FormState>();
+  String? _selectedGender; // Added for dropdown
+  String? _selectedBloodType; // Already present
+  final List<String> _genderOptions = ['Male', 'Female', 'Other']; // Added gender options
+  final List<String> _bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
   // Form controllers
   late TextEditingController _nameController;
   late TextEditingController _ageController;
-  late TextEditingController _genderController;
   late TextEditingController _locationController;
-  late TextEditingController _bloodTypeController;
   late TextEditingController _allergiesController;
   late TextEditingController _medicationsController;
   late TextEditingController _emergencyContactController;
@@ -108,9 +110,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void _initControllers() {
     _nameController = TextEditingController(text: _profile.fullName);
     _ageController = TextEditingController(text: _profile.age);
-    _genderController = TextEditingController(text: _profile.gender);
     _locationController = TextEditingController(text: _profile.location);
-    _bloodTypeController = TextEditingController(text: _profile.bloodType);
     _allergiesController = TextEditingController(text: _profile.allergies);
     _medicationsController = TextEditingController(text: _profile.medications);
     _emergencyContactController = TextEditingController(text: _profile.emergencyContact);
@@ -119,9 +119,9 @@ class _ProfilePageState extends State<ProfilePage> {
   void _updateControllers() {
     _nameController.text = _profile.fullName;
     _ageController.text = _profile.age;
-    _genderController.text = _profile.gender;
+    _selectedGender = _profile.gender; // Update dropdown
     _locationController.text = _profile.location;
-    _bloodTypeController.text = _profile.bloodType;
+    _selectedBloodType = _profile.bloodType; // Update dropdown
     _allergiesController.text = _profile.allergies;
     _medicationsController.text = _profile.medications;
     _emergencyContactController.text = _profile.emergencyContact;
@@ -129,15 +129,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _loadUserData() async {
     try {
-      // Get current user ID
       final User? user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         _userId = user.uid;
-        
-        // Get user profile data from Firestore
-        final DocumentSnapshot<Map<String, dynamic>> snapshot = 
+        final DocumentSnapshot<Map<String, dynamic>> snapshot =
             await _firestore.collection('users').doc(_userId).get();
-        
+
         if (snapshot.exists) {
           setState(() {
             _profile = ProfileModel.fromFirestore(snapshot);
@@ -145,14 +142,12 @@ class _ProfilePageState extends State<ProfilePage> {
             _isLoading = false;
           });
         } else {
-          // No data exists yet, use defaults
-          _saveUserData(); // Save default data
+          _saveUserData();
           setState(() {
             _isLoading = false;
           });
         }
       } else {
-        // Handle not logged in state
         setState(() {
           _isLoading = false;
         });
@@ -166,24 +161,21 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _saveUserData() async {
-
     try {
-      // Update profile model from form fields
       _profile = ProfileModel(
         fullName: _nameController.text,
         age: _ageController.text,
-        gender: _genderController.text,
+        gender: _selectedGender ?? _profile.gender, // Use dropdown value
         location: _locationController.text,
-        bloodType: _bloodTypeController.text,
+        bloodType: _selectedBloodType ?? _profile.bloodType, // Use dropdown value
         allergies: _allergiesController.text,
         medications: _medicationsController.text,
         emergencyContact: _emergencyContactController.text,
         memberSince: _profile.memberSince,
       );
 
-      // Save to Firestore
       await _firestore.collection('users').doc(_userId).set(_profile.toJson());
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profile updated successfully')),
       );
@@ -198,9 +190,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void dispose() {
     _nameController.dispose();
     _ageController.dispose();
-    _genderController.dispose();
     _locationController.dispose();
-    _bloodTypeController.dispose();
     _allergiesController.dispose();
     _medicationsController.dispose();
     _emergencyContactController.dispose();
@@ -240,7 +230,7 @@ class _ProfilePageState extends State<ProfilePage> {
               onPressed: () {
                 setState(() {
                   _isEditing = false;
-                  _updateControllers(); // Reset controllers to current profile values
+                  _updateControllers();
                 });
               },
             ),
@@ -322,11 +312,21 @@ class _ProfilePageState extends State<ProfilePage> {
                         },
                         keyboardType: TextInputType.number,
                       ),
-                      _buildEditableField(
+                      _buildEditableDropdown(
                         icon: Icons.person_outline,
                         label: 'Gender',
-                        controller: _genderController,
+                        value: _selectedGender,
+                        items: _genderOptions,
                         isEditing: _isEditing,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedGender = value;
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null) return 'Please select your gender';
+                          return null;
+                        },
                       ),
                       _buildEditableField(
                         icon: Icons.location_on,
@@ -337,20 +337,19 @@ class _ProfilePageState extends State<ProfilePage> {
                     ]),
                     const SizedBox(height: 20),
                     _buildInfoSection('Health Information', [
-                      _buildEditableField(
+                      _buildEditableDropdown(
                         icon: Icons.medical_services,
                         label: 'Blood Type',
-                        controller: _bloodTypeController,
+                        value: _selectedBloodType,
+                        items: _bloodTypes,
                         isEditing: _isEditing,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedBloodType = value;
+                          });
+                        },
                         validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your blood type';
-                          }
-                          // Allow common blood types with +/- (A+, B-, AB+, etc.)
-                          final validBloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-                          if (!validBloodTypes.contains(value)) {
-                            return 'Please enter a valid blood type (A+, B-, etc.)';
-                          }
+                          if (value == null) return 'Please select your blood type';
                           return null;
                         },
                       ),
@@ -464,6 +463,69 @@ class _ProfilePageState extends State<ProfilePage> {
                       )
                     : Text(
                         controller.text,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditableDropdown({
+    required IconData icon,
+    required String label,
+    required String? value,
+    required List<String> items,
+    required bool isEditing,
+    required ValueChanged<String?> onChanged,
+    String? Function(String?)? validator,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            color: Colors.blue[700],
+            size: 22,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 2),
+                isEditing
+                    ? DropdownButtonFormField<String>(
+                        value: value,
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(vertical: 8),
+                        ),
+                        items: items
+                            .map((item) => DropdownMenuItem<String>(
+                                  value: item,
+                                  child: Text(item),
+                                ))
+                            .toList(),
+                        onChanged: onChanged,
+                        validator: validator,
+                      )
+                    : Text(
+                        value ?? 'Not set',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
