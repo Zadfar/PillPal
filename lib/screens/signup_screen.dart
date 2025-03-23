@@ -18,8 +18,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   CollectionReference _users = FirebaseFirestore.instance.collection("users");
 
-  final TextEditingController _firstNameController = TextEditingController();
-  final TextEditingController _lastNameController = TextEditingController();
+  final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
   bool _isObscure = true;
@@ -76,26 +75,13 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   SizedBox(height: media.width * 0.02),
                   RoundTextField(
-                    textEditingController: _firstNameController,
-                    hintText: "First Name",
+                    textEditingController: _fullNameController,
+                    hintText: "Full Name",
                     icon: "assets/icons/user.png",
                     textinputType: TextInputType.name,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return "Please enter your First Name";
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: media.width * 0.02),
-                  RoundTextField(
-                    textEditingController: _lastNameController,
-                    hintText: "Last Name",
-                    icon: "assets/icons/user.png",
-                    textinputType: TextInputType.name,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return "Please enter your Last Name";
                       }
                       return null;
                     },
@@ -190,8 +176,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             // Create initial user document
                             await _users.doc(uid).set({
                               'email': _emailController.text,
-                              'firstName': _firstNameController.text,
-                              'lastName': _lastNameController.text,
+                              'fullName': _fullNameController.text,
                               'createdAt': FieldValue.serverTimestamp(),
                             });
 

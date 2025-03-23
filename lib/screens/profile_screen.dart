@@ -57,7 +57,7 @@ class ProfileModel {
   factory ProfileModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
     return ProfileModel(
-      fullName: '${data['firstName'] ?? 'Jane'} ${data['lastName'] ?? 'Doe'}',
+      fullName: data['fullName'] ?? 'Jane Doe',
       age: data['age'] ?? '32',
       gender: data['gender'] ?? 'Female',
       location: data['location'] ?? 'New York, USA',
@@ -119,9 +119,9 @@ class _ProfilePageState extends State<ProfilePage> {
   void _updateControllers() {
     _nameController.text = _profile.fullName;
     _ageController.text = _profile.age;
-    _selectedGender = _profile.gender; // Update dropdown
+    _selectedGender = _profile.gender;
     _locationController.text = _profile.location;
-    _selectedBloodType = _profile.bloodType; // Update dropdown
+    _selectedBloodType = _profile.bloodType;
     _allergiesController.text = _profile.allergies;
     _medicationsController.text = _profile.medications;
     _emergencyContactController.text = _profile.emergencyContact;
@@ -165,9 +165,9 @@ class _ProfilePageState extends State<ProfilePage> {
       _profile = ProfileModel(
         fullName: _nameController.text,
         age: _ageController.text,
-        gender: _selectedGender ?? _profile.gender, // Use dropdown value
+        gender: _selectedGender ?? _profile.gender,
         location: _locationController.text,
-        bloodType: _selectedBloodType ?? _profile.bloodType, // Use dropdown value
+        bloodType: _selectedBloodType ?? _profile.bloodType,
         allergies: _allergiesController.text,
         medications: _medicationsController.text,
         emergencyContact: _emergencyContactController.text,

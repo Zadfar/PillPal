@@ -17,6 +17,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final CollectionReference _users = FirebaseFirestore.instance.collection('users');
 
+  final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
   String? _selectedGender;
   final TextEditingController _locationController = TextEditingController();
@@ -36,6 +37,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         final User? user = _auth.currentUser;
         if (user != null) {
           await _users.doc(user.uid).update({
+            'fullName' : _fullNameController.text,
             'age': _ageController.text,
             'gender': _selectedGender,
             'location': _locationController.text,
@@ -87,6 +89,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     fontWeight: FontWeight.bold,
                     color: AppColors.blackColor,
                   ),
+                ),
+                const SizedBox(height: 15),
+                RoundTextField(
+                  textEditingController: _fullNameController,
+                  hintText: "Full Name",
+                  icon: "assets/icons/user.png",
+                  textinputType: TextInputType.text,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return "Please enter your Full Name";
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 20),
                 RoundTextField(

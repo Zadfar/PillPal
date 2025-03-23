@@ -123,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               ListTile(
                 leading: const Icon(Icons.trending_up),
-                title: const Text("Adherence Tracking", style: TextStyle(color: AppColors.blackColor, fontSize: 16, fontWeight: FontWeight.w500)),
+                title: const Text("Medication Tracking", style: TextStyle(color: AppColors.blackColor, fontSize: 16, fontWeight: FontWeight.w500)),
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdherenceScreen())),
               ),
               ListTile(

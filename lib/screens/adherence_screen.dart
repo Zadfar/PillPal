@@ -54,7 +54,7 @@ class _AdherenceScreenState extends State<AdherenceScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Adherence Tracking'),
+        title: const Text('Medication Tracking'),
         backgroundColor: AppColors.secondaryColor2,
         elevation: 0,
       ),
@@ -67,7 +67,7 @@ class _AdherenceScreenState extends State<AdherenceScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return const Center(child: Text('No adherence data available yet.'));
+              return const Center(child: Text('No medication data available yet.'));
             }
 
             final adherenceData = snapshot.data!;
