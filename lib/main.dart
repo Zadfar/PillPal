@@ -2,26 +2,26 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:mm_project/firebase_options.dart';
-import 'package:mm_project/screens/home_screen.dart';
 import 'package:mm_project/screens/login_screen.dart';
+import 'package:mm_project/screens/profile_center_screen.dart';
 import 'package:mm_project/screens/profile_setup_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  Future<bool> _checkProfileExists(String uid) async {
-    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-    // Check if key profile fields exist (e.g., 'age' as a proxy for setup completion)
-    return doc.exists && doc.data() != null && doc.data()!.containsKey('age');
+  Future<String?> _getFirstProfileId(String uid) async {
+    final snapshot = await FirebaseFirestore.instance.collection('users').doc(uid).collection('profiles').get();
+    if (snapshot.docs.isNotEmpty) {
+      return snapshot.docs.first.id;
+    }
+    return null;
   }
 
   @override
@@ -40,14 +40,14 @@ class MyApp extends StatelessWidget {
           }
 
           final user = snapshot.data!;
-          return FutureBuilder<bool>(
-            future: _checkProfileExists(user.uid),
+          return FutureBuilder<String?>(
+            future: _getFirstProfileId(user.uid),
             builder: (context, profileSnapshot) {
               if (profileSnapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              if (profileSnapshot.hasData && profileSnapshot.data!) {
-                return const HomeScreen();
+              if (profileSnapshot.hasData && profileSnapshot.data != null) {
+                return const ProfileCenterScreen();
               }
               return const ProfileSetupScreen();
             },

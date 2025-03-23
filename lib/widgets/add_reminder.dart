@@ -7,7 +7,7 @@ import 'package:mm_project/services/notification_logic.dart';
 import 'package:mm_project/utils/app_colors.dart';
 import 'package:mm_project/widgets/round_text_field.dart';
 
-Future<void> addReminder(BuildContext context, String uid) {
+Future<void> addReminder(BuildContext context, String uid, String profileId) {
   final TextEditingController _medNameController = TextEditingController();
   final TextEditingController _totalPillsController = TextEditingController();
   final TextEditingController _pillsPerDoseController = TextEditingController();
@@ -68,6 +68,8 @@ Future<void> addReminder(BuildContext context, String uid) {
       await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
+          .collection('profiles')
+          .doc(profileId)
           .collection('reminder')
           .add(reminderModel.toMap());
 

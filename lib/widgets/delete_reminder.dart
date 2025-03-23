@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
-deleteReminder(BuildContext context, String id, String uid) {
+deleteReminder(BuildContext context, String id, String uid, String profileId) {
   return showDialog(context: context,
    builder: (context) {
     return AlertDialog(
@@ -14,7 +14,7 @@ deleteReminder(BuildContext context, String id, String uid) {
       actions: [
         TextButton(onPressed: () {
           try {
-            FirebaseFirestore.instance.collection("users").doc(uid).collection("reminder").doc(id).delete();
+            FirebaseFirestore.instance.collection("users").doc(uid).collection('profiles').doc(profileId).collection("reminder").doc(id).delete();
             Fluttertoast.showToast(msg: "Reminder Deleted");
           } catch (e) {
             Fluttertoast.showToast(msg: e.toString());

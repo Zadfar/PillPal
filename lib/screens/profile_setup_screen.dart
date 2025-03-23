@@ -7,7 +7,8 @@ import 'package:mm_project/widgets/round_gradient_button.dart';
 import 'package:mm_project/widgets/round_text_field.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
-  const ProfileSetupScreen({super.key});
+  final bool isNewProfile;
+  const ProfileSetupScreen({super.key, this.isNewProfile = false});
 
   @override
   State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
@@ -27,7 +28,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final TextEditingController _emergencyContactController = TextEditingController();
 
   final _formKey = GlobalKey<FormState>();
-
   final List<String> _genderOptions = ['Male', 'Female', 'Other'];
   final List<String> _bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -36,8 +36,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       try {
         final User? user = _auth.currentUser;
         if (user != null) {
-          await _users.doc(user.uid).update({
-            'fullName' : _fullNameController.text,
+          final profileData = {
+            'fullName': _fullNameController.text,
             'age': _ageController.text,
             'gender': _selectedGender,
             'location': _locationController.text,
@@ -46,21 +46,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             'medications': _medicationsController.text,
             'emergencyContact': _emergencyContactController.text,
             'memberSince': DateTime.now().year.toString(),
-          });
+          };
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile setup complete!')),
-          );
-
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-          );
+          
+          final docRef = await _users.doc(user.uid).collection('profiles').add(profileData);
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile created!')));
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen(profileId: docRef.id)));
+          
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving profile: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error saving profile: $e')));
       }
     }
   }
@@ -70,7 +65,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     return Scaffold(
       backgroundColor: AppColors.whiteColor,
       appBar: AppBar(
-        title: const Text('Setup Your Profile'),
+        title: Text(widget.isNewProfile ? 'Add New Profile' : 'Setup Your Profile'),
         backgroundColor: AppColors.secondaryColor2,
         elevation: 0,
       ),
@@ -82,13 +77,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Let’s get to know you!",
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.blackColor,
-                  ),
+                Text(
+                  widget.isNewProfile ? "Add a New Profile" : "Let’s get to know you!",
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.blackColor),
                 ),
                 const SizedBox(height: 15),
                 RoundTextField(
@@ -96,10 +87,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   hintText: "Full Name",
                   icon: "assets/icons/user.png",
                   textinputType: TextInputType.text,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return "Please enter your Full Name";
-                    return null;
-                  },
+                  validator: (value) => value == null || value.isEmpty ? "Please enter your full name" : null,
                 ),
                 const SizedBox(height: 20),
                 RoundTextField(
@@ -107,52 +95,26 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   hintText: "Age",
                   icon: "assets/icons/cake.png",
                   textinputType: TextInputType.number,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return "Please enter your age";
-                    return null;
-                  },
+                  validator: (value) => value == null || value.isEmpty ? "Please enter your age" : null,
                 ),
                 const SizedBox(height: 15),
-                // Gender Dropdown
                 DropdownButtonFormField<String>(
                   value: _selectedGender,
                   hint: const Text("Select Gender"),
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: AppColors.lightGrayColor,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide.none,
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
                     prefixIcon: Container(
                       alignment: Alignment.center,
                       width: 20,
                       height: 20,
-                      child: Image.asset(
-                        "assets/icons/gender.png",
-                        height: 20,
-                        width: 20,
-                        fit: BoxFit.contain,
-                        color: AppColors.grayColor,
-                      ),
+                      child: Image.asset("assets/icons/gender.png", height: 20, width: 20, fit: BoxFit.contain, color: AppColors.grayColor),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
-                  items: _genderOptions
-                      .map((String gender) => DropdownMenuItem<String>(
-                            value: gender,
-                            child: Text(gender),
-                          ))
-                      .toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      _selectedGender = newValue;
-                    });
-                  },
-                  validator: (value) {
-                    if (value == null) return "Please select your gender";
-                    return null;
-                  },
+                  items: _genderOptions.map((gender) => DropdownMenuItem(value: gender, child: Text(gender))).toList(),
+                  onChanged: (newValue) => setState(() => _selectedGender = newValue),
+                  validator: (value) => value == null ? "Please select your gender" : null,
                 ),
                 const SizedBox(height: 15),
                 RoundTextField(
@@ -160,52 +122,26 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   hintText: "Location",
                   icon: "assets/icons/location.png",
                   textinputType: TextInputType.text,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return "Please enter your location";
-                    return null;
-                  },
+                  validator: (value) => value == null || value.isEmpty ? "Please enter your location" : null,
                 ),
                 const SizedBox(height: 15),
-                // Blood Type Dropdown
                 DropdownButtonFormField<String>(
                   value: _selectedBloodType,
                   hint: const Text("Select Blood Type"),
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: AppColors.lightGrayColor,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide.none,
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
                     prefixIcon: Container(
                       alignment: Alignment.center,
                       width: 20,
                       height: 20,
-                      child: Image.asset(
-                        "assets/icons/blood.png",
-                        height: 20,
-                        width: 20,
-                        fit: BoxFit.contain,
-                        color: AppColors.grayColor,
-                      ),
+                      child: Image.asset("assets/icons/blood.png", height: 20, width: 20, fit: BoxFit.contain, color: AppColors.grayColor),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
-                  items: _bloodTypes
-                      .map((String bloodType) => DropdownMenuItem<String>(
-                            value: bloodType,
-                            child: Text(bloodType),
-                          ))
-                      .toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      _selectedBloodType = newValue;
-                    });
-                  },
-                  validator: (value) {
-                    if (value == null) return "Please select your blood type";
-                    return null;
-                  },
+                  items: _bloodTypes.map((bloodType) => DropdownMenuItem(value: bloodType, child: Text(bloodType))).toList(),
+                  onChanged: (newValue) => setState(() => _selectedBloodType = newValue),
+                  validator: (value) => value == null ? "Please select your blood type" : null,
                 ),
                 const SizedBox(height: 15),
                 RoundTextField(
@@ -227,14 +163,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   hintText: "Emergency Contact",
                   icon: "assets/icons/emergency.png",
                   textinputType: TextInputType.phone,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return "Please enter an emergency contact";
-                    return null;
-                  },
+                  validator: (value) => value == null || value.isEmpty ? "Please enter an emergency contact" : null,
                 ),
                 const SizedBox(height: 30),
                 RoundGradientButton(
-                  title: "Save and Continue",
+                  title: widget.isNewProfile ? "Create Profile" : "Save and Continue",
                   onPressed: _saveProfile,
                 ),
               ],

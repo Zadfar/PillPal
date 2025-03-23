@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:mm_project/screens/home_screen.dart';
+import 'package:mm_project/screens/profile_center_screen.dart';
 import 'package:mm_project/screens/signup_screen.dart';
 import 'package:mm_project/utils/app_colors.dart';
 import 'package:mm_project/widgets/round_gradient_button.dart';
@@ -34,7 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
         );
 
-        Navigator.push(context, MaterialPageRoute(builder: (context) => HomeScreen(),));
+        Navigator.push(context, MaterialPageRoute(builder: (context) => ProfileCenterScreen(),));
         return user;
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(

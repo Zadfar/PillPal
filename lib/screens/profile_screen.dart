@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:mm_project/utils/app_colors.dart';
 
 class ProfileModel {
@@ -15,15 +15,15 @@ class ProfileModel {
   String memberSince;
 
   ProfileModel({
-    this.fullName = 'Jane Doe',
-    this.age = '32',
-    this.gender = 'Female',
-    this.location = 'New York, USA',
-    this.bloodType = 'A+',
-    this.allergies = 'Peanuts, Penicillin',
-    this.medications = 'None',
-    this.emergencyContact = 'John Doe (555-123-4567)',
-    this.memberSince = '2023',
+    this.fullName = 'Unnamed Profile',
+    this.age = '',
+    this.gender = '',
+    this.location = '',
+    this.bloodType = '',
+    this.allergies = '',
+    this.medications = '',
+    this.emergencyContact = '',
+    this.memberSince = '',
   });
 
   Map<String, dynamic> toJson() {
@@ -40,38 +40,25 @@ class ProfileModel {
     };
   }
 
-  factory ProfileModel.fromJson(Map<String, dynamic> json) {
-    return ProfileModel(
-      fullName: json['fullName'] ?? 'Jane Doe',
-      age: json['age'] ?? '32',
-      gender: json['gender'] ?? 'Female',
-      location: json['location'] ?? 'New York, USA',
-      bloodType: json['bloodType'] ?? 'A+',
-      allergies: json['allergies'] ?? 'Peanuts, Penicillin',
-      medications: json['medications'] ?? 'None',
-      emergencyContact: json['emergencyContact'] ?? 'John Doe (555-123-4567)',
-      memberSince: json['memberSince'] ?? '2023',
-    );
-  }
-
   factory ProfileModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
     return ProfileModel(
-      fullName: data['fullName'] ?? 'Jane Doe',
-      age: data['age'] ?? '32',
-      gender: data['gender'] ?? 'Female',
-      location: data['location'] ?? 'New York, USA',
-      bloodType: data['bloodType'] ?? 'A+',
-      allergies: data['allergies'] ?? 'Peanuts, Penicillin',
-      medications: data['medications'] ?? 'None',
-      emergencyContact: data['emergencyContact'] ?? 'John Doe (555-123-4567)',
-      memberSince: data['memberSince'] ?? '2023',
+      fullName: data['fullName'] ?? 'Unnamed Profile',
+      age: data['age'] ?? '',
+      gender: data['gender'] ?? '',
+      location: data['location'] ?? '',
+      bloodType: data['bloodType'] ?? '',
+      allergies: data['allergies'] ?? '',
+      medications: data['medications'] ?? '',
+      emergencyContact: data['emergencyContact'] ?? '',
+      memberSince: data['memberSince'] ?? '',
     );
   }
 }
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({Key? key}) : super(key: key);
+  final String profileId;
+  const ProfilePage({Key? key, required this.profileId}) : super(key: key);
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -82,9 +69,9 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isLoading = true;
   late ProfileModel _profile;
   final _formKey = GlobalKey<FormState>();
-  String? _selectedGender; // Added for dropdown
-  String? _selectedBloodType; // Already present
-  final List<String> _genderOptions = ['Male', 'Female', 'Other']; // Added gender options
+  String? _selectedGender;
+  String? _selectedBloodType;
+  final List<String> _genderOptions = ['Male', 'Female', 'Other'];
   final List<String> _bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
   // Form controllers
@@ -95,16 +82,16 @@ class _ProfilePageState extends State<ProfilePage> {
   late TextEditingController _medicationsController;
   late TextEditingController _emergencyContactController;
 
-  // Firebase Firestore instance
+  // Firebase instances
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  String? _userId;
 
   @override
   void initState() {
     super.initState();
     _profile = ProfileModel();
     _initControllers();
-    _loadUserData();
+    _loadProfileData();
   }
 
   void _initControllers() {
@@ -119,21 +106,24 @@ class _ProfilePageState extends State<ProfilePage> {
   void _updateControllers() {
     _nameController.text = _profile.fullName;
     _ageController.text = _profile.age;
-    _selectedGender = _profile.gender;
+    _selectedGender = _profile.gender.isNotEmpty ? _profile.gender : null;
     _locationController.text = _profile.location;
-    _selectedBloodType = _profile.bloodType;
+    _selectedBloodType = _profile.bloodType.isNotEmpty ? _profile.bloodType : null;
     _allergiesController.text = _profile.allergies;
     _medicationsController.text = _profile.medications;
     _emergencyContactController.text = _profile.emergencyContact;
   }
 
-  Future<void> _loadUserData() async {
+  Future<void> _loadProfileData() async {
     try {
-      final User? user = FirebaseAuth.instance.currentUser;
+      final User? user = _auth.currentUser;
       if (user != null) {
-        _userId = user.uid;
-        final DocumentSnapshot<Map<String, dynamic>> snapshot =
-            await _firestore.collection('users').doc(_userId).get();
+        final snapshot = await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('profiles')
+            .doc(widget.profileId)
+            .get();
 
         if (snapshot.exists) {
           setState(() {
@@ -142,43 +132,52 @@ class _ProfilePageState extends State<ProfilePage> {
             _isLoading = false;
           });
         } else {
-          _saveUserData();
           setState(() {
             _isLoading = false;
           });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profile not found')),
+          );
         }
-      } else {
-        setState(() {
-          _isLoading = false;
-        });
       }
     } catch (e) {
-      print('Error loading user data: $e');
+      print('Error loading profile data: $e');
       setState(() {
         _isLoading = false;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading profile: $e')),
+      );
     }
   }
 
-  Future<void> _saveUserData() async {
+  Future<void> _saveProfileData() async {
     try {
-      _profile = ProfileModel(
-        fullName: _nameController.text,
-        age: _ageController.text,
-        gender: _selectedGender ?? _profile.gender,
-        location: _locationController.text,
-        bloodType: _selectedBloodType ?? _profile.bloodType,
-        allergies: _allergiesController.text,
-        medications: _medicationsController.text,
-        emergencyContact: _emergencyContactController.text,
-        memberSince: _profile.memberSince,
-      );
+      final User? user = _auth.currentUser;
+      if (user != null) {
+        _profile = ProfileModel(
+          fullName: _nameController.text,
+          age: _ageController.text,
+          gender: _selectedGender ?? '',
+          location: _locationController.text,
+          bloodType: _selectedBloodType ?? '',
+          allergies: _allergiesController.text,
+          medications: _medicationsController.text,
+          emergencyContact: _emergencyContactController.text,
+          memberSince: _profile.memberSince.isEmpty ? DateTime.now().year.toString() : _profile.memberSince,
+        );
 
-      await _firestore.collection('users').doc(_userId).set(_profile.toJson());
+        await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('profiles')
+            .doc(widget.profileId)
+            .set(_profile.toJson(), SetOptions(merge: true));
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated successfully')),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated successfully')),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error saving profile: $e')),
@@ -211,7 +210,7 @@ class _ProfilePageState extends State<ProfilePage> {
             onPressed: () {
               if (_isEditing) {
                 if (_formKey.currentState!.validate()) {
-                  _saveUserData().then((_) {
+                  _saveProfileData().then((_) {
                     setState(() {
                       _isEditing = false;
                     });
@@ -249,7 +248,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         children: [
                           const CircleAvatar(
                             radius: 50,
-                            backgroundColor: AppColors.grayColor,
+                            backgroundColor: AppColors.whiteColor,
+                            child: Icon(Icons.person, size: 60, color: AppColors.grayColor),
                           ),
                           const SizedBox(height: 12),
                           _isEditing
@@ -260,20 +260,13 @@ class _ProfilePageState extends State<ProfilePage> {
                                     fontWeight: FontWeight.bold,
                                     color: AppColors.blackColor,
                                   ),
-                                  decoration: InputDecoration(
-                                    enabledBorder: UnderlineInputBorder(
-                                      borderSide: BorderSide(color: Colors.white.withOpacity(0.5)),
-                                    ),
-                                    focusedBorder: const UnderlineInputBorder(
-                                      borderSide: BorderSide(color: Colors.white),
-                                    ),
+                                  textAlign: TextAlign.center,
+                                  decoration: const InputDecoration(
+                                    border: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.whiteColor)),
+                                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.whiteColor)),
+                                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.whiteColor)),
                                   ),
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Please enter your name';
-                                    }
-                                    return null;
-                                  },
+                                  validator: (value) => value == null || value.isEmpty ? 'Please enter your name' : null,
                                 )
                               : Text(
                                   _profile.fullName,
@@ -285,7 +278,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                           const SizedBox(height: 4),
                           Text(
-                            'Member since ${_profile.memberSince}',
+                            'Member since ${_profile.memberSince.isEmpty ? 'N/A' : _profile.memberSince}',
                             style: TextStyle(
                               color: AppColors.blackColor.withOpacity(0.8),
                               fontSize: 14,
@@ -302,12 +295,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         controller: _ageController,
                         isEditing: _isEditing,
                         validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your age';
-                          }
-                          if (int.tryParse(value) == null) {
-                            return 'Please enter a valid number';
-                          }
+                          if (value == null || value.isEmpty) return 'Please enter your age';
+                          if (int.tryParse(value) == null) return 'Please enter a valid number';
                           return null;
                         },
                         keyboardType: TextInputType.number,
@@ -318,21 +307,15 @@ class _ProfilePageState extends State<ProfilePage> {
                         value: _selectedGender,
                         items: _genderOptions,
                         isEditing: _isEditing,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedGender = value;
-                          });
-                        },
-                        validator: (value) {
-                          if (value == null) return 'Please select your gender';
-                          return null;
-                        },
+                        onChanged: (value) => setState(() => _selectedGender = value),
+                        validator: (value) => value == null ? 'Please select your gender' : null,
                       ),
                       _buildEditableField(
                         icon: Icons.location_on,
                         label: 'Location',
                         controller: _locationController,
                         isEditing: _isEditing,
+                        validator: (value) => value == null || value.isEmpty ? 'Please enter your location' : null,
                       ),
                     ]),
                     const SizedBox(height: 20),
@@ -343,15 +326,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         value: _selectedBloodType,
                         items: _bloodTypes,
                         isEditing: _isEditing,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedBloodType = value;
-                          });
-                        },
-                        validator: (value) {
-                          if (value == null) return 'Please select your blood type';
-                          return null;
-                        },
+                        onChanged: (value) => setState(() => _selectedBloodType = value),
+                        validator: (value) => value == null ? 'Please select your blood type' : null,
                       ),
                       _buildEditableField(
                         icon: Icons.warning_amber,
@@ -372,6 +348,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         label: 'Emergency Contact',
                         controller: _emergencyContactController,
                         isEditing: _isEditing,
+                        validator: (value) => value == null || value.isEmpty ? 'Please enter an emergency contact' : null,
                       ),
                     ]),
                     const SizedBox(height: 20),
@@ -387,13 +364,13 @@ class _ProfilePageState extends State<ProfilePage> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.2),
             spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -404,14 +381,10 @@ class _ProfilePageState extends State<ProfilePage> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Text(
               title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.blackColor),
             ),
           ),
-          const Divider(),
+          const Divider(height: 1, color: AppColors.lightGrayColor),
           ...children,
         ],
       ),
@@ -432,41 +405,29 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            color: Colors.blue[700],
-            size: 22,
-          ),
+          Icon(icon, color: AppColors.primaryColor1, size: 22),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(height: 2),
+                Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+                const SizedBox(height: 4),
                 isEditing
                     ? TextFormField(
                         controller: controller,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           isDense: true,
                           contentPadding: EdgeInsets.symmetric(vertical: 8),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                         validator: validator,
                         keyboardType: keyboardType,
                         maxLines: maxLines,
                       )
                     : Text(
-                        controller.text,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        controller.text.isEmpty ? 'Not set' : controller.text,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.blackColor),
                       ),
               ],
             ),
@@ -490,46 +451,29 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            color: Colors.blue[700],
-            size: 22,
-          ),
+          Icon(icon, color: AppColors.primaryColor1, size: 22),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(height: 2),
+                Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+                const SizedBox(height: 4),
                 isEditing
                     ? DropdownButtonFormField<String>(
                         value: value,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           isDense: true,
-                          contentPadding: EdgeInsets.symmetric(vertical: 8),
+                          contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                        items: items
-                            .map((item) => DropdownMenuItem<String>(
-                                  value: item,
-                                  child: Text(item),
-                                ))
-                            .toList(),
+                        items: items.map((item) => DropdownMenuItem<String>(value: item, child: Text(item))).toList(),
                         onChanged: onChanged,
                         validator: validator,
                       )
                     : Text(
                         value ?? 'Not set',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.blackColor),
                       ),
               ],
             ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:mm_project/screens/home_screen.dart';
+import 'package:mm_project/screens/profile_center_screen.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
@@ -22,7 +22,7 @@ class NotificationLogic {
         await _notifications.initialize(settings,
             onDidReceiveNotificationResponse: (payload){
                 Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (context) => HomeScreen(),));
+                MaterialPageRoute(builder: (context) => ProfileCenterScreen(),));
             onNotifications.add(payload as String?);
         });
     }

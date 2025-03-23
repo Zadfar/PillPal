@@ -7,7 +7,8 @@ import 'package:mm_project/model/medication_history_model.dart';
 import 'package:mm_project/utils/app_colors.dart';
 
 class AdherenceScreen extends StatefulWidget {
-  const AdherenceScreen({super.key});
+  final String profileId;
+  const AdherenceScreen({super.key,  required this.profileId});
 
   @override
   State<AdherenceScreen> createState() => _AdherenceScreenState();
@@ -27,6 +28,8 @@ class _AdherenceScreenState extends State<AdherenceScreen> {
     final snapshot = await FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
+        .collection('profiles')
+        .doc(widget.profileId)
         .collection('medication_history')
         .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(sevenDaysAgo))
         .get();

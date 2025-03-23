@@ -8,8 +8,9 @@ class Switcher extends StatefulWidget {
   String id;
   Timestamp timestamp;
   String medName;
+  String profileId;
 
-  Switcher(this.onOff, this.uid, this.id, this.timestamp, this.medName);
+  Switcher(this.onOff, this.uid, this.id, this.timestamp, this.medName, this.profileId);
 
   @override
   State<Switcher> createState() => _SwitcherState();
@@ -21,15 +22,16 @@ class _SwitcherState extends State<Switcher> {
     return Switch(
       value: widget.onOff,
       onChanged: (bool value) {
-        // Update only the 'onOff' field in Firestore
         FirebaseFirestore.instance
             .collection('users')
             .doc(widget.uid)
+            .collection('profiles')
+            .doc(widget.profileId)
             .collection("reminder")
             .doc(widget.id)
             .update({'onOff': value}).then((_) {
           setState(() {
-            widget.onOff = value; // Update local state
+            widget.onOff = value;
           });
         }).catchError((error) {
           print("Failed to update reminder: $error");
