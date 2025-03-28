@@ -103,16 +103,11 @@ class _HomeScreenState extends State<HomeScreen> {
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
-              _buildHeader(),
+              _buildHeader(context, widget.profileId),
               ListTile(
                 leading: const Icon(Icons.account_circle),
                 title: const Text("Profile Center", style: TextStyle(color: AppColors.blackColor, fontSize: 16, fontWeight: FontWeight.w500)),
                 onTap: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ProfileCenterScreen())),
-              ),
-              ListTile(
-                leading: const Icon(Icons.account_circle),
-                title: const Text("Edit Profile", style: TextStyle(color: AppColors.blackColor, fontSize: 16, fontWeight: FontWeight.w500)),
-                onTap: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ProfilePage(profileId: widget.profileId))),
               ),
               ListTile(
                 leading: const Icon(Icons.trending_up),
@@ -224,10 +219,37 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context, String profileId) {
     return DrawerHeader(
       decoration: BoxDecoration(color: AppColors.secondaryColor2),
-      child: const Text("PillPal", style: TextStyle(color: AppColors.blackColor, fontSize: 18, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+      child: InkWell(
+      onTap: () {
+        Navigator.pop(context);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProfilePage(profileId: profileId),
+          ),
+        );
+      },
+      child: Column(
+        children: [
+          const CircleAvatar(
+                            radius: 50,
+                            backgroundColor: AppColors.whiteColor,
+                            child: Icon(Icons.person, size: 60, color: AppColors.grayColor),
+          ),
+          Text(
+            'Profile',
+            style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: AppColors.blackColor,
+            ),
+          ),
+        ],
+      ),
+      ),
     );
   }
 }

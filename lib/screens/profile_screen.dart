@@ -348,7 +348,15 @@ class _ProfilePageState extends State<ProfilePage> {
                         label: 'Emergency Contact',
                         controller: _emergencyContactController,
                         isEditing: _isEditing,
-                        validator: (value) => value == null || value.isEmpty ? 'Please enter an emergency contact' : null,
+                        validator: (value) {
+                          if(value == null || value.isEmpty) {
+                            return "Please Enter an Emergency Number";
+                          }
+                          if(!RegExp(r'^\d{10}$').hasMatch(value)) {
+                            return "Please Enter a Valid 10-digit Phone Number";
+                          }
+                          return null;
+                        },
                       ),
                     ]),
                     const SizedBox(height: 20),

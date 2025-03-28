@@ -25,9 +25,10 @@ class _ProfileCenterScreenState extends State<ProfileCenterScreen> {
     }
 
     return Scaffold(
+      backgroundColor: AppColors.whiteColor,
       appBar: AppBar(
-        title: const Text('Profile Center'),
-        backgroundColor: AppColors.secondaryColor2,
+        title: const Text('Profile Center', style: TextStyle(color: AppColors.whiteColor),),
+        backgroundColor: Color(0xff90EE90),
         elevation: 0,
       ),
       body: SafeArea(
@@ -71,11 +72,7 @@ class _ProfileCenterScreenState extends State<ProfileCenterScreen> {
                           margin: const EdgeInsets.symmetric(vertical: 8),
                           child: Container(
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [AppColors.primaryColor1.withOpacity(0.8), AppColors.primaryColor2.withOpacity(0.8)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
+                              color: Color(0xff90EE90),
                               borderRadius: BorderRadius.circular(15),
                             ),
                             child: ListTile(
