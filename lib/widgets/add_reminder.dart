@@ -28,7 +28,7 @@ Future<void> addReminder(BuildContext context, String uid, String profileId) {
       int pillsPerDose = int.parse(_pillsPerDoseController.text);
       int dosesPerDay = freq == 'Daily' ? (24 ~/ interval) : (24 ~/ (interval * 7));
       int daysUntilRefill = (totalPills ~/ (pillsPerDose * dosesPerDay));
-      DateTime refillDate = now.add(Duration(days: daysUntilRefill - 3)); // Notify 3 days before
+      DateTime refillDate = now.add(Duration(days: daysUntilRefill - 2));
       int refillNotificationId = "${dateTime.millisecondsSinceEpoch}_refill".hashCode;
 
       ReminderModel reminderModel = ReminderModel(medicationName: _medNameController.text);
@@ -40,28 +40,25 @@ Future<void> addReminder(BuildContext context, String uid, String profileId) {
       reminderModel.pillsPerDose = pillsPerDose;
       reminderModel.refillNotificationId = refillNotificationId;
 
-      List<int> notificationIds = [];
-      DateTime nextTime = dateTime;
-      for (int i = 0; nextTime.isBefore(now.add(const Duration(days: 7))); i++) {
-        int id = "${DateTime.now().millisecondsSinceEpoch}_$i".hashCode;
-        notificationIds.add(id);
-        await NotificationLogic.showNotifications(
-          id: id,
-          title: "PillPal",
-          body: "Time to take ${_medNameController.text}",
-          dateTime: nextTime,
-        );
-        nextTime = freq == 'Daily'
-            ? nextTime.add(Duration(hours: interval))
-            : nextTime.add(Duration(days: 7, hours: interval));
-      }
-      reminderModel.notificationIds = notificationIds;
+      int reminderId = "${uid}_${_medNameController.text}_${dateTime.millisecondsSinceEpoch}".hashCode;
+      reminderModel.notificationIds = [reminderId];
+
+      await NotificationLogic.scheduleRecurringNotification(
+        id: reminderId,
+        title: "PillPal",
+        body: "Time to take ${_medNameController.text}",
+        payload: "$profileId|$reminderId",
+        startTime: dateTime,
+        frequency: freq,
+        intervalHours: interval,
+      );
 
       // Schedule refill notification
-      await NotificationLogic.showNotifications(
+      await NotificationLogic.showNotification(
         id: refillNotificationId,
         title: "PillPal Refill Reminder",
         body: "Time to refill ${_medNameController.text}! Only a few days left.",
+        payload: "$profileId|refill",
         dateTime: refillDate,
       );
 

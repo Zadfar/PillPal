@@ -55,7 +55,7 @@ class _ProfileCenterScreenState extends State<ProfileCenterScreen> {
                     itemBuilder: (context, index) {
                       final profile = profiles[index];
                       final profileId = profile.id;
-                      final fullName = profile['fullName'] ?? 'Unnamed Profile';
+                      final fullName = profile['fullName'];
 
                       return GestureDetector(
                         onTap: () {

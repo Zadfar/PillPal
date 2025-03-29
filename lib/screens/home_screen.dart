@@ -79,12 +79,24 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       });
     } else {
-      NotificationLogic.init(context, user!.uid);
+      NotificationLogic.init(
+        onNotificationTap: (payload) {
+          if (payload != null && mounted) {
+            final parts = payload.split('|');
+            final profileId = parts[0];
+            Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => HomeScreen(profileId: profileId)),
+            );
+          }
+        },
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user?.uid).collection('profiles').doc(widget.profileId);
     if (user == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -103,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
-              _buildHeader(context, widget.profileId),
+              _buildHeader(context, widget.profileId , userRef),
               ListTile(
                 leading: const Icon(Icons.account_circle),
                 title: const Text("Profile Center", style: TextStyle(color: AppColors.blackColor, fontSize: 16, fontWeight: FontWeight.w500)),
@@ -219,37 +231,47 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, String profileId) {
-    return DrawerHeader(
-      decoration: BoxDecoration(color: AppColors.secondaryColor2),
-      child: InkWell(
-      onTap: () {
-        Navigator.pop(context);
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ProfilePage(profileId: profileId),
-          ),
-        );
-      },
-      child: Column(
-        children: [
-          const CircleAvatar(
-                            radius: 50,
-                            backgroundColor: AppColors.whiteColor,
-                            child: Icon(Icons.person, size: 60, color: AppColors.grayColor),
-          ),
-          Text(
-            'Profile',
-            style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: AppColors.blackColor,
+  Widget _buildHeader(BuildContext context, String profileId, DocumentReference userRef) {
+
+    return StreamBuilder(stream: userRef.snapshots(), builder: 
+    (context, snapshot) {
+      final userData = snapshot.data;
+      return SizedBox(
+      height: 250,
+      child: DrawerHeader(
+        decoration: BoxDecoration(color: AppColors.secondaryColor2),
+        child: InkWell(
+        onTap: () {
+          Navigator.pop(context);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProfilePage(profileId: profileId),
             ),
-          ),
-        ],
-      ),
+          );
+        },
+        child: Column(
+          children: [
+            SizedBox(height: 15,),
+            const CircleAvatar(
+                              radius: 50,
+                              backgroundColor: AppColors.whiteColor,
+                              child: Icon(Icons.person, size: 60, color: AppColors.grayColor),
+            ),
+            SizedBox(height: 15,),
+            Text(
+              userData?['fullName'] ?? '',
+              style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: AppColors.blackColor,
+              ),
+            ),
+          ],
+        ),
+        ),
       ),
     );
+    });
   }
 }
