@@ -2,10 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mm_project/model/reminder_model.dart';
 import 'package:mm_project/services/notification_logic.dart';
 import 'package:mm_project/utils/app_colors.dart';
 import 'package:mm_project/widgets/round_text_field.dart';
+import 'dart:io';
 
 Future<void> addReminder(BuildContext context, String uid, String profileId) {
   final TextEditingController _medNameController = TextEditingController();
@@ -14,6 +17,49 @@ Future<void> addReminder(BuildContext context, String uid, String profileId) {
   TimeOfDay? selectedTime = TimeOfDay.now();
   String frequency = 'Daily';
   int intervalHours = 1;
+  File _selectedImage;
+
+  Future<void> _extractTextFromImage(File imageFile) async {
+    try {
+      Fluttertoast.showToast(msg: "Processing image...");
+      
+      final inputImage = InputImage.fromFile(imageFile);
+      final textRecognizer = TextRecognizer();
+      final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
+      
+      String extractedText = recognizedText.text;
+      textRecognizer.close();
+      
+      if (extractedText.isNotEmpty) {
+        String? possibleMedName = extractedText.split('\n')
+          .where((line) => line.trim().isNotEmpty)
+          .firstWhere((line) => line.length > 3, orElse: () => '');
+        
+        if (possibleMedName.isNotEmpty) {
+          _medNameController.text = possibleMedName;
+          Fluttertoast.showToast(msg: "Text extracted successfully");
+        } else {
+          Fluttertoast.showToast(msg: "No recognizable text found");
+        }
+      } else {
+        Fluttertoast.showToast(msg: "No text found in image");
+      }
+    } catch (e) {
+      Fluttertoast.showToast(msg: "Failed to extract text: $e");
+    }
+  }
+
+   Future<void> _pickImage() async {
+    try {
+      final pickedFile = await ImagePicker().pickImage(source: ImageSource.camera);
+      if (pickedFile != null) {
+        _selectedImage = File(pickedFile.path);
+        await _extractTextFromImage(_selectedImage);
+      }
+    } catch (e) {
+      Fluttertoast.showToast(msg: "Failed to pick image: $e");
+    }
+  }
 
   void add(String uid, TimeOfDay time, String freq, int interval) async {
     try {
@@ -109,6 +155,16 @@ Future<void> addReminder(BuildContext context, String uid, String profileId) {
                       icon: "assets/icons/pill.png",
                       textinputType: TextInputType.text,
                       validator: (value) => value == null || value.isEmpty ? "Please enter a medication name" : null,
+                    ),
+                    const SizedBox(height: 20),
+                    const Text("Image", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.grayColor)),
+                    const SizedBox(height: 8),
+                    ElevatedButton(
+                      onPressed: () async {
+                        await _pickImage();
+                        setState(() {});
+                      }, 
+                      child: Text("Pick Image")
                     ),
                     const SizedBox(height: 20),
                     const Text("Reminder Time", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.grayColor)),
