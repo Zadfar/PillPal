@@ -157,14 +157,14 @@ Future<void> addReminder(BuildContext context, String uid, String profileId) {
                       validator: (value) => value == null || value.isEmpty ? "Please enter a medication name" : null,
                     ),
                     const SizedBox(height: 20),
-                    const Text("Image", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.grayColor)),
+                    const Text("Or", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.grayColor)),
                     const SizedBox(height: 8),
                     ElevatedButton(
                       onPressed: () async {
                         await _pickImage();
                         setState(() {});
                       }, 
-                      child: Text("Pick Image")
+                      child: Text("Use Image")
                     ),
                     const SizedBox(height: 20),
                     const Text("Reminder Time", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.grayColor)),
