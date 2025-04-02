@@ -9,6 +9,8 @@ import 'package:mm_project/services/notification_logic.dart';
 import 'package:mm_project/utils/app_colors.dart';
 import 'package:mm_project/widgets/round_text_field.dart';
 import 'dart:io';
+import 'package:mm_project/services/interaction_service.dart';
+import 'package:mm_project/widgets/interaction_warning.dart';
 
 Future<void> addReminder(BuildContext context, String uid, String profileId) {
   final TextEditingController _medNameController = TextEditingController();
@@ -17,7 +19,10 @@ Future<void> addReminder(BuildContext context, String uid, String profileId) {
   TimeOfDay? selectedTime = TimeOfDay.now();
   String frequency = 'Daily';
   int intervalHours = 1;
-  File _selectedImage;
+  File? _selectedImage;
+
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final InteractionService _interactionService = InteractionService(); 
 
   Future<void> _extractTextFromImage(File imageFile) async {
     try {
@@ -31,13 +36,23 @@ Future<void> addReminder(BuildContext context, String uid, String profileId) {
       textRecognizer.close();
       
       if (extractedText.isNotEmpty) {
-        String? possibleMedName = extractedText.split('\n')
-          .where((line) => line.trim().isNotEmpty)
-          .firstWhere((line) => line.length > 3, orElse: () => '');
-        
+        String? possibleMedName = extractedText
+            .split('\n')
+            .map((line) => line.trim())
+            .where((line) => line.isNotEmpty && line.length > 3 && RegExp(r'^[A-Z0-9\s.-]+$').hasMatch(line.split(' ')[0]))
+            .firstWhere((line) => !line.toLowerCase().contains('mg') && !line.toLowerCase().contains('tablet'), orElse: () => ''); // Avoid dosage lines
+
+        if (possibleMedName.isEmpty) {
+           possibleMedName = extractedText.split('\n')
+            .map((line) => line.trim())
+            .where((line) => line.isNotEmpty && line.length > 3)
+            .firstWhere((line) => true, orElse: () => '');
+        }
+
+
         if (possibleMedName.isNotEmpty) {
-          _medNameController.text = possibleMedName;
-          Fluttertoast.showToast(msg: "Text extracted successfully");
+          _medNameController.text = possibleMedName.split(' ')[0];
+          Fluttertoast.showToast(msg: "Text extracted: ${_medNameController.text}");
         } else {
           Fluttertoast.showToast(msg: "No recognizable text found");
         }
@@ -45,7 +60,7 @@ Future<void> addReminder(BuildContext context, String uid, String profileId) {
         Fluttertoast.showToast(msg: "No text found in image");
       }
     } catch (e) {
-      Fluttertoast.showToast(msg: "Failed to extract text: $e");
+      Fluttertoast.showToast(msg: "Failed to extract text");
     }
   }
 
@@ -54,14 +69,71 @@ Future<void> addReminder(BuildContext context, String uid, String profileId) {
       final pickedFile = await ImagePicker().pickImage(source: ImageSource.camera);
       if (pickedFile != null) {
         _selectedImage = File(pickedFile.path);
-        await _extractTextFromImage(_selectedImage);
+        await _extractTextFromImage(_selectedImage!);
       }
     } catch (e) {
       Fluttertoast.showToast(msg: "Failed to pick image: $e");
     }
   }
 
-  void add(String uid, TimeOfDay time, String freq, int interval) async {
+  Future<List<String>> _getUserProfileMedications(String userId, String profileId) async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('profiles')
+          .doc(profileId)
+          .collection('reminder')
+          .get();
+
+      List<String> names = snapshot.docs
+          .map((doc) {
+              final data = doc.data() as Map<String, dynamic>?;
+              return data?['name'] as String? ?? '';
+            })
+          .where((name) => name.isNotEmpty)
+          .toList();
+        debugPrint("[InteractionCheck] $names.");
+      return names;
+    } catch (e) {
+      Fluttertoast.showToast(msg: "Could not fetch existing medications.");
+      return [];
+    }
+  }
+
+  Future<void> _performInteractionCheck({
+    required String newMedicationName,
+    required String userId,
+    required String profileId,
+    required BuildContext dialogContext,
+  }) async {
+    if (!dialogContext.mounted) return;
+
+    try {
+      List<String> currentMedicationNames = await _getUserProfileMedications(userId, profileId);
+
+      if (currentMedicationNames.length > 1) {
+        List<InteractionWarning> warnings = await _interactionService.checkInteractions(
+            newMedicationName,
+            currentMedicationNames.where((name) => name != newMedicationName).toList(),
+        );
+        if (warnings.isNotEmpty && dialogContext.mounted) {
+            await showInteractionDialog(dialogContext, warnings);
+        } else if (warnings.isEmpty) {
+             debugPrint("[InteractionCheck] No significant interactions found.");
+        }
+      } else {
+      }
+    } catch (e, stackTrace) {
+      debugPrint("[InteractionCheck] Error during check: $e\n$stackTrace");
+       if(dialogContext.mounted) {
+         Fluttertoast.showToast(msg: "Interaction check failed.", gravity: ToastGravity.CENTER);
+       }
+    }
+     debugPrint("[InteractionCheck] Finished for '$newMedicationName'.");
+  }
+
+  Future<bool> add(String uid, TimeOfDay time, String freq, int interval) async {
     try {
       DateTime now = DateTime.now();
       DateTime dateTime = DateTime(now.year, now.month, now.day, time.hour, time.minute);
@@ -117,14 +189,16 @@ Future<void> addReminder(BuildContext context, String uid, String profileId) {
           .add(reminderModel.toMap());
 
       Fluttertoast.showToast(msg: "Reminder Added");
+      return true;
     } catch (e) {
       Fluttertoast.showToast(msg: "Failed to add reminder: $e");
+      return false;
     }
   }
 
   return showDialog(
     context: context,
-    builder: (context) {
+    builder: (dialogcontext) {
       return StatefulBuilder(
         builder: (BuildContext context, void Function(void Function()) setState) {
           return Dialog(
@@ -149,23 +223,27 @@ Future<void> addReminder(BuildContext context, String uid, String profileId) {
                     const SizedBox(height: 20),
                     const Text("Medication Name", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.grayColor)),
                     const SizedBox(height: 8),
-                    RoundTextField(
-                      textEditingController: _medNameController,
-                      hintText: "Enter medication name",
-                      icon: "assets/icons/pill.png",
-                      textinputType: TextInputType.text,
-                      validator: (value) => value == null || value.isEmpty ? "Please enter a medication name" : null,
-                    ),
-                    const SizedBox(height: 20),
-                    const Text("Or", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.grayColor)),
-                    const SizedBox(height: 8),
-                    ElevatedButton(
-                      onPressed: () async {
-                        await _pickImage();
-                        setState(() {});
-                      }, 
-                      child: Text("Use Image")
-                    ),
+                     Row( 
+                       children: [
+                         Expanded(
+                           child: RoundTextField(
+                             textEditingController: _medNameController,
+                             hintText: "Enter med name or use camera",
+                             icon: "assets/icons/pill.png",
+                             textinputType: TextInputType.text,
+                             validator: (value) => value == null || value.isEmpty ? "Required" : null,
+                           ),
+                         ),
+                         IconButton(
+                           icon: const Icon(Icons.camera_alt, color: AppColors.primaryColor1),
+                           tooltip: "Scan Medication",
+                           onPressed: () async {
+                              await _pickImage();
+                              setState(() {});
+                           },
+                         ),
+                       ],
+                     ),
                     const SizedBox(height: 20),
                     const Text("Reminder Time", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.grayColor)),
                     const SizedBox(height: 8),
@@ -251,19 +329,41 @@ Future<void> addReminder(BuildContext context, String uid, String profileId) {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         TextButton(
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: () => Navigator.pop(dialogcontext),
                           child: const Text("Cancel", style: TextStyle(color: AppColors.grayColor, fontSize: 16, fontWeight: FontWeight.w500)),
                         ),
                         ElevatedButton(
-                          onPressed: () {
-                            if (_medNameController.text.isNotEmpty &&
-                                selectedTime != null &&
-                                _totalPillsController.text.isNotEmpty &&
-                                _pillsPerDoseController.text.isNotEmpty) {
-                              add(uid, selectedTime!, frequency, intervalHours);
-                              Navigator.pop(context);
-                            } else {
-                              Fluttertoast.showToast(msg: "Please fill all required fields");
+                         onPressed: () async {
+                            final String medName = _medNameController.text.trim();
+                            final String pillsPerDoseStr = _pillsPerDoseController.text;
+                            final String totalPillsStr = _totalPillsController.text;
+
+                            if (medName.isEmpty) {
+                              Fluttertoast.showToast(msg: "Medication name required"); return;
+                            }
+                            if (selectedTime == null) {
+                              Fluttertoast.showToast(msg: "Reminder time required"); return;
+                            }
+                             if (pillsPerDoseStr.isEmpty || (int.tryParse(pillsPerDoseStr) ?? 0) <= 0) {
+                              Fluttertoast.showToast(msg: "Pills per dose must be > 0"); return;
+                             }
+                             if (totalPillsStr.isNotEmpty && (int.tryParse(totalPillsStr) ?? -1) < 0) {
+                               Fluttertoast.showToast(msg: "Total pills must be a positive number (or blank)"); return;
+                             }
+
+                            bool addedOk = await add(uid, selectedTime!, frequency, intervalHours);
+
+                            if (addedOk && context.mounted) {
+                               await _performInteractionCheck(
+                                newMedicationName: medName,
+                                userId: uid,
+                                profileId: profileId,
+                                dialogContext: dialogcontext,
+                              );
+                            }
+
+                            if (addedOk && context.mounted) {
+                              Navigator.pop(dialogcontext);
                             }
                           },
                           style: ElevatedButton.styleFrom(
